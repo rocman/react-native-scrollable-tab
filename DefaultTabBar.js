@@ -19,7 +19,7 @@ var styles = StyleSheet.create({
   },
 
   tabs: {
-    height: 50,
+    height: 44,
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderWidth: 1,
