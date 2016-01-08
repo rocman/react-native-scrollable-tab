@@ -167,58 +167,47 @@ const ScrollableTabView = React.createClass({
     const scrollValueFloor = Math.floor(scrollValue);
     const scrollValueCeil = Math.ceil(scrollValue);
     React.Children.forEach(this.props.children, (child, index) => {
-      let shouldActivate = true;
-      if (child.props.lazy) {
+      let tabItem = this.refs['item_' + index];
+      if (tabItem) {
         switch (index) {
           case scrollValueFloor:
           case scrollValueCeil: {
-            break;
-          }
-          default: {
-            shouldActivate = false;
-            break;
-          }
-        }
-      }
-      let tabItem = this.refs['item_' + index];
-      if (tabItem) {
-        if (shouldActivate) {
-          tabItem.state && tabItem.state.active || (
-            tabItem.state && tabItem.state.initialized || (
-              tabItem.tabItemWillInitialize && (
-                tabItem.tabItemWillInitialize()
+            tabItem.state && tabItem.state.active || (
+              tabItem.state && tabItem.state.initialized || (
+                tabItem.tabItemWillInitialize && (
+                  tabItem.tabItemWillInitialize()
+                ),
+                tabItem.setState({
+                  initialized: true
+                }),
+                tabItem.tabItemDidInitialize && (
+                  tabItem.tabItemDidInitialize()
+                )
+              ),
+              tabItem.tabItemWillActivate && (
+                tabItem.tabItemWillActivate()
               ),
               tabItem.setState({
-                initialized: true
+                active: true
               }),
-              tabItem.tabItemDidInitialize && (
-                tabItem.tabItemDidInitialize()
+              tabItem.tabItemDidActivate && (
+                tabItem.tabItemDidActivate()
               )
-            ),
-            tabItem.tabItemWillActivate && (
-              tabItem.tabItemWillActivate()
-            ),
-            tabItem.setState({
-              active: true
-            }),
-            tabItem.tabItemDidActivate && (
-              tabItem.tabItemDidActivate()
-            )
-          );
+            );
+            return;
+          }
         }
-        else {
-          tabItem.state && tabItem.state.active && (
-            tabItem.tabItemWillDeactivate && (
-              tabItem.tabItemWillDeactivate()
-            ),
-            tabItem.setState({
-              active: false
-            }),
-            tabItem.tabItemDidDeactivate && (
-              tabItem.tabItemDidDeactivate()
-            )
-          );
-        }
+        tabItem.state && tabItem.state.active && (
+          tabItem.tabItemWillDeactivate && (
+            tabItem.tabItemWillDeactivate()
+          ),
+          tabItem.setState({
+            active: false
+          }),
+          tabItem.tabItemDidDeactivate && (
+            tabItem.tabItemDidDeactivate()
+          )
+        );
       }
     });
   },
