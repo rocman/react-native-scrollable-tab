@@ -180,6 +180,9 @@ const ScrollableTabView = React.createClass({
                 tabItem.tabItemWillInitialize && (
                   tabItem.tabItemWillInitialize()
                 ),
+                tabItem.initialize && (
+                  tabItem.initialize('ScrollableTabView')
+                ),
                 tabItem.setState({
                   initialized: true
                 }),
