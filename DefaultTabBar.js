@@ -27,14 +27,30 @@ class DefaultTabBar extends Component {
   };
   styles = {
     root: {
+      alignItems: 'center',
       flexDirection: 'row',
-      justifyContent: 'space-around'
+      justifyContent: 'space-around',
+      paddingLeft: 6,
+      paddingRight: 6
+    },
+    leftButton: {
+      backgroundColor: 'white',
+      width: 28,
+      height: 28
+    },
+    rightButton: {
+      backgroundColor: 'white',
+      width: 28,
+      height: 28
+    },
+    scrollView: {
+      flex: 1,
+      marginLeft: 6,
+      marginRight: 6
     },
     contentContainer: {
       flex: 1,
       height: 44,
-      paddingLeft: 6,
-      paddingRight: 6,
       position: 'relative',
     },
     highlight: {
@@ -67,20 +83,20 @@ class DefaultTabBar extends Component {
     const containerWidth = this.props.containerWidth;
     const numberOfTabs = this.props.tabs.length;
     
-    const {contentSizeOfScrollView, layoutsOfTabOptions} = this.state || {};
-    if (contentSizeOfScrollView && layoutsOfTabOptions && layoutsOfTabOptions.length) {
+    const {contentSizeOfScrollView, layoutOfScrollView, layoutsOfTabOptions} = this.state || {};
+    if (contentSizeOfScrollView && layoutOfScrollView && layoutsOfTabOptions && layoutsOfTabOptions.length) {
       const inputRange = [];
       const outputRangeLeft = [];
       const outputRangeWidth = [];
       const outputRangeOffset = [];
-      const maxOffsetX = Math.max(contentSizeOfScrollView.width - containerWidth, 0);
+      const maxOffsetX = Math.max(contentSizeOfScrollView.width - layoutOfScrollView.width, 0);
       let temp = 0;
       layoutsOfTabOptions.forEach(function({width}, index) {
         inputRange.push(index);
-        outputRangeLeft.push(temp + styles.contentContainer.paddingLeft);
+        outputRangeLeft.push(temp);
         outputRangeWidth.push(width);
         outputRangeOffset.push(constrainInRange(
-          /* value */ temp - (containerWidth - width) / 2,
+          /* value */ temp - (layoutOfScrollView.width - width) / 2,
           /* min   */ 0,
           /* max   */ maxOffsetX
         ));
@@ -107,7 +123,7 @@ class DefaultTabBar extends Component {
           outputRange: outputRangeOffset,
           extrapolateLeft: 'clamp',
           extrapolateRight: 'clamp',
-          mapping: x => ({x, y: 0})
+          mapping: x => ({x})
         });
       }
       
@@ -120,17 +136,24 @@ class DefaultTabBar extends Component {
 
     return (
       <View style={[styles.root, this.props.style]}>
+        <View style={[styles.leftButton, this.props.leftButtonStyle]}>
+        </View>
         <AnimatedScrollView
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.contentContainer}
           contentOffset={offset}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
           style={styles.scrollView}
-          onContentSizeChange={this.scrollViewOnContentSizeChange.bind(this)}>
+          onContentSizeChange={this.scrollViewOnContentSizeChange.bind(this)}
+          onLayout={this.scrollViewOnLayout.bind(this)}
+          onScroll={this.scrollViewOnScroll.bind(this)}>
           {highlight}
           {this.props.tabs.map(this.renderTabOption.bind(this))}
         </AnimatedScrollView>
+        <View style={[styles.rightButton, this.props.rightButtonStyle]}>
+        </View>
       </View>
     );
   }
@@ -144,7 +167,7 @@ class DefaultTabBar extends Component {
       <TouchableOpacity
         key={name}
         style={styles.root}
-        onPress={e => this.props.goToPage(index)}
+        onPress={e => this.goToPage(index)}
         onLayout={e => this.tabOptionOnLayout(e, index)}>
         <Animated.Text style={[styles.text, {color}]}>{name}</Animated.Text>
       </TouchableOpacity>
@@ -153,10 +176,37 @@ class DefaultTabBar extends Component {
   scrollViewOnContentSizeChange(width, height) {
     this.setState({contentSizeOfScrollView: {width, height}});
   }
+  scrollViewOnLayout({nativeEvent:{layout}}) {
+    this.setState({layoutOfScrollView: layout});
+  }
+  scrollViewOnScroll({nativeEvent:{contentOffset:{x}}}) {
+    console.log('scrollViewOnScroll', x);
+    this.scrollViewContentOffsetX = x;
+  }
   tabOptionOnLayout({nativeEvent:{layout}}, page) {
     const {layoutsOfTabOptions = []} = this.state || {};
     layoutsOfTabOptions[page] = layout;
     this.setState({layoutsOfTabOptions});
+  }
+  goToPage(index) {
+    let x = this.scrollViewContentOffsetX;
+    if (x > 0) {
+      const {layoutsOfTabOptions} = this.state || {};
+      if (layoutsOfTabOptions) {
+        for (let i = 0, j = layoutsOfTabOptions.length; i < j; i++) {
+          const layout = layoutsOfTabOptions[i];
+          if (layout == null) {
+            break;
+          }
+          if (x > layout.width) {
+            x -= layout.width;
+            continue;
+          }
+          return this.props.goToPage(index, i + x / layout.width);
+        }
+      }
+    }
+    return this.props.goToPage(index);
   }
 }
 

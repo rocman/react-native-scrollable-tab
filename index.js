@@ -56,29 +56,6 @@ const ScrollableTabView = React.createClass({
     };
   },
 
-  componentWillReceiveProps(props) {
-    if (props.initialPage && props.initialPage !== this.state.currentPage) {
-      this.goToPage(props.initialPage);
-    }
-  },
-
-  goToPage(pageNumber) {
-    this.props.onChangeTab({
-      i: pageNumber,
-      ref: this.props.children[pageNumber]
-    });
-
-    if (Platform.OS === 'ios') {
-      var offset = pageNumber * this.state.container.width;
-      this.scrollView.scrollTo(0, offset);
-    }
-    else {
-      this.scrollView.setPage(pageNumber);
-    }
-
-    this.setState({currentPage: pageNumber});
-  },
-
   render() {
     var tabBarProps = {
       goToPage: this.goToPage,
@@ -140,7 +117,6 @@ const ScrollableTabView = React.createClass({
           onMomentumScrollEnd={(e) => {
             var offsetX = e.nativeEvent.contentOffset.x;
             this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
-            this._reactToContentOffsetX(offsetX, true);
           }}
           scrollEventThrottle={16}
           showsHorizontalScrollIndicator={false}
@@ -168,6 +144,29 @@ const ScrollableTabView = React.createClass({
     }
   },
 
+  componentWillReceiveProps(props) {
+    if (props.initialPage && props.initialPage !== this.state.currentPage) {
+      this.goToPage(props.initialPage);
+    }
+  },
+
+  goToPage(pageNumber, fromScrollValue) {
+    this.props.onChangeTab({
+      i: pageNumber,
+      ref: this.props.children[pageNumber]
+    });
+
+    if (Platform.OS === 'ios') {
+      var offset = pageNumber * this.state.container.width;
+      this.scrollView.scrollWithoutAnimationTo(0, offset);
+    }
+    else {
+      this.scrollView.setPage(pageNumber);
+    }
+
+    this.setState({currentPage: pageNumber});
+  },
+
   _updateSelectedPage(currentPage) {
     if (typeof currentPage === 'object') {
       currentPage = currentPage.nativeEvent.position;
@@ -182,63 +181,60 @@ const ScrollableTabView = React.createClass({
     this.props.onScroll(value);
   },
   
-  _reactToContentOffsetX(offsetX, force) {
-    if (force || this.isDragging) {
-      const scrollValue = offsetX / this.state.container.width;
-      const scrollValueFloor = Math.floor(scrollValue);
-      const scrollValueCeil = Math.ceil(scrollValue);
-      React.Children.forEach(this.props.children, (child, index) => {
-        let tabItem = this.refs['item_' + index];
-        if (tabItem) {
-          switch (index) {
-            case scrollValueFloor:
-            case scrollValueCeil: {
-              tabItem.state && tabItem.state.active || (
-                tabItem.state && tabItem.state.initialized || (
-                  tabItem.tabItemWillInitialize && (
-                    tabItem.tabItemWillInitialize()
-                  ),
-                  tabItem.initialize && (
-                    tabItem.initialize('ScrollableTabView')
-                  ),
-                  tabItem.setState({
-                    initialized: true
-                  }),
-                  tabItem.tabItemDidInitialize && (
-                    tabItem.tabItemDidInitialize()
-                  )
+  _reactToContentOffsetX(offsetX) {
+    const scrollValue = offsetX / this.state.container.width;
+    const scrollValueFloor = Math.floor(scrollValue);
+    const scrollValueCeil = Math.ceil(scrollValue);
+    React.Children.forEach(this.props.children, (child, index) => {
+      let tabItem = this.refs['item_' + index];
+      if (tabItem) {
+        switch (index) {
+          case scrollValueFloor:
+          case scrollValueCeil: {
+            tabItem.state && tabItem.state.active || (
+              tabItem.state && tabItem.state.initialized || (
+                tabItem.tabItemWillInitialize && (
+                  tabItem.tabItemWillInitialize()
                 ),
-                tabItem.tabItemWillActivate && (
-                  tabItem.tabItemWillActivate()
+                tabItem.initialize && (
+                  tabItem.initialize('ScrollableTabView')
                 ),
                 tabItem.setState({
-                  active: true
+                  initialized: true
                 }),
-                tabItem.tabItemDidActivate && (
-                  tabItem.tabItemDidActivate()
+                tabItem.tabItemDidInitialize && (
+                  tabItem.tabItemDidInitialize()
                 )
-              );
-              return;
-            }
+              ),
+              tabItem.tabItemWillActivate && (
+                tabItem.tabItemWillActivate()
+              ),
+              tabItem.setState({
+                active: true
+              }),
+              tabItem.tabItemDidActivate && (
+                tabItem.tabItemDidActivate()
+              )
+            );
+            return;
           }
-          tabItem.state && tabItem.state.active && (
-            tabItem.tabItemWillDeactivate && (
-              tabItem.tabItemWillDeactivate()
-            ),
-            tabItem.setState({
-              active: false
-            }),
-            tabItem.tabItemDidDeactivate && (
-              tabItem.tabItemDidDeactivate()
-            )
-          );
         }
-      });
-    }
+        tabItem.state && tabItem.state.active && (
+          tabItem.tabItemWillDeactivate && (
+            tabItem.tabItemWillDeactivate()
+          ),
+          tabItem.setState({
+            active: false
+          }),
+          tabItem.tabItemDidDeactivate && (
+            tabItem.tabItemDidDeactivate()
+          )
+        );
+      }
+    });
   },
   
-  _handleScroll(e) {
-    const offsetX = e.nativeEvent.contentOffset.x;
+  _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {
     this._updateScrollValue(offsetX / this.state.container.width);
     this._reactToContentOffsetX(offsetX);
   },
@@ -262,13 +258,13 @@ const ScrollableTabView = React.createClass({
       });
     }
     
-    this._reactToContentOffsetX(0, true);
+    this._reactToContentOffsetX(0);
   },
 });
 
 module.exports = ScrollableTabView;
 
-var styles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
