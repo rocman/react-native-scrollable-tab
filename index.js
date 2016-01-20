@@ -70,13 +70,35 @@ const ScrollableTabView = React.createClass({
 
     if (Platform.OS === 'ios') {
       var offset = pageNumber * this.state.container.width;
-      this.scrollView.scrollTo(0, offset);
+      this.scrollView.scrollWithoutAnimationTo(0, offset);
     }
     else {
       this.scrollView.setPage(pageNumber);
     }
 
     this.setState({currentPage: pageNumber});
+  },
+
+  render() {
+    var tabBarProps = {
+      goToPage: this.goToPage,
+      tabs: React.Children.map(this.props.children, child => child.props.tabLabel),
+      activeTab: this.state.currentPage,
+      scrollValue: this.state.scrollValue,
+      underlineColor : this.props.tabBarUnderlineColor,
+      backgroundColor : this.props.tabBarBackgroundColor,
+      activeTextColor : this.props.tabBarActiveTextColor,
+      inactiveTextColor : this.props.tabBarInactiveTextColor,
+      containerWidth: this.state.container.width,
+    };
+
+    return (
+      <View style={[styles.container, this.props.style]} onLayout={this._handleLayout}>
+        {this.props.tabBarPosition === 'top' ? this.renderTabBar(tabBarProps) : null}
+        {this.renderScrollableContent()}
+        {this.props.tabBarPosition === 'bottom' ? this.renderTabBar(tabBarProps) : null}
+      </View>
+    );
   },
 
   renderTabBar(props) {
@@ -107,7 +129,6 @@ const ScrollableTabView = React.createClass({
           automaticallyAdjustContentInsets={false}
           style={styles.scrollableContentIOS}
           contentContainerStyle={styles.scrollableContentContainerIOS}
-          contentOffset={{x:this.props.initialPage * this.state.container.width}}
           ref={(scrollView) => { this.scrollView = scrollView }}
           onScroll={this._handleScroll}
           onMomentumScrollBegin={(e) => {
@@ -231,28 +252,6 @@ const ScrollableTabView = React.createClass({
     
     this._reactToContentOffsetX(0);
   },
-
-  render() {
-    var tabBarProps = {
-      goToPage: this.goToPage,
-      tabs: React.Children.map(this.props.children, child => child.props.tabLabel),
-      activeTab: this.state.currentPage,
-      scrollValue: this.state.scrollValue,
-      underlineColor : this.props.tabBarUnderlineColor,
-      backgroundColor : this.props.tabBarBackgroundColor,
-      activeTextColor : this.props.tabBarActiveTextColor,
-      inactiveTextColor : this.props.tabBarInactiveTextColor,
-      containerWidth: this.state.container.width,
-    };
-
-    return (
-      <View style={[styles.container, this.props.style]} onLayout={this._handleLayout}>
-        {this.props.tabBarPosition === 'top' ? this.renderTabBar(tabBarProps) : null}
-        {this.renderScrollableContent()}
-        {this.props.tabBarPosition === 'bottom' ? this.renderTabBar(tabBarProps) : null}
-      </View>
-    );
-  }
 });
 
 module.exports = ScrollableTabView;

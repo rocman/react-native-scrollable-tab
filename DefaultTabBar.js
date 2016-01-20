@@ -73,7 +73,7 @@ class DefaultTabBar extends Component {
       const outputRangeLeft = [];
       const outputRangeWidth = [];
       const outputRangeOffset = [];
-      const maxOffsetX = contentSizeOfScrollView.width - containerWidth;
+      const maxOffsetX = Math.max(contentSizeOfScrollView.width - containerWidth, 0);
       let temp = 0;
       layoutsOfTabOptions.forEach(function({width}, index) {
         inputRange.push(index);
