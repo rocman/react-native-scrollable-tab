@@ -90,6 +90,15 @@ const ScrollableTabView = React.createClass({
   },
 
   renderScrollableContent() {
+    const children = React.Children.map(
+      this.props.children, (child, index) => {
+      return React.cloneElement(child, {
+        key: `item_${index}`,
+        ref: `item_${index}`,
+        index: index,
+        style: {width: this.state.container.width}
+      })
+    });
     if (Platform.OS === 'ios') {
       return (
         <ScrollView
@@ -113,16 +122,8 @@ const ScrollableTabView = React.createClass({
           showsHorizontalScrollIndicator={false}
           scrollEnabled={!this.props.locked}
           directionalLockEnabled
-          alwaysBounceVertical={false}>{
-            React.Children.map(this.props.children, (child, index) => {
-              return React.cloneElement(child, {
-                key: `item_${index}`,
-                ref: `item_${index}`,
-                index: index,
-                style: {width: this.state.container.width}
-              })
-            })
-          }
+          alwaysBounceVertical={false}>
+          {children}
         </ScrollView>
       );
     }
@@ -136,16 +137,8 @@ const ScrollableTabView = React.createClass({
             const {offset, position} = e.nativeEvent;
             this._updateScrollValue(position + offset);
           }}
-          ref={(scrollView) => { this.scrollView = scrollView }}>{
-            React.Children.map(this.props.children, (child, index) => {
-              return React.cloneElement(child, {
-                key: `item_${index}`,
-                ref: `item_${index}`,
-                index: index,
-                style: {width: this.state.container.width}
-              })
-            })
-          }
+          ref={(scrollView) => { this.scrollView = scrollView }}>
+          {children}
         </ViewPagerAndroid>
       );
     }
@@ -161,6 +154,7 @@ const ScrollableTabView = React.createClass({
   },
 
   _updateScrollValue(value) {
+    console.log('range', '_updateScrollValue', value);
     this.state.scrollValue.setValue(value);
     this.props.onScroll(value);
   },
