@@ -86,11 +86,6 @@ class DefaultTabBar extends Component {
         ));
         temp += width;
       });
-      
-      console.log('range', 'inputRange', inputRange);
-      console.log('range', 'outputRangeLeft', outputRangeLeft);
-      console.log('range', 'outputRangeWidth', outputRangeWidth);
-      console.log('range', 'outputRangeOffset', outputRangeOffset);
 
       if (inputRange.length > 1) {
         const left = this.props.scrollValue.interpolate({
