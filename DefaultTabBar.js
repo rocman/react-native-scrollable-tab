@@ -138,51 +138,83 @@ const Smooth = {
       timeoutsForTweens = {};
       constructor() {
         super(...arguments);
+        this.state = {};
       }
       render() {
-        const props = {...this.props, ...this.state};
-        metasOfPropsToSmooth.forEach(meta => {
-          console.log('tween', 'render', meta.getFromProps(props), this.state && meta.getFromProps(this.state));
-        });
+        const props = {...this.props, ...this.state, style: {...this.props.style, ...this.state.style}};
         return (
           <ComponentToSmooth {...props} />
         );
       }
       componentWillReceiveProps(nextProps) {
-        const start = new Date;
-        metasOfPropsToSmooth.forEach(meta => {
-          const target = meta.default(meta.getFromProps(nextProps));
-          const origin = meta.default(meta.getFromProps(this.props));
-          if (meta.differ(target, origin)) {
-            const propName = meta.propName;
-            const diff = meta.substract(target, origin);
-            const unit = meta.divide(diff, duration);
-            if (this.timeoutsForTweens[propName]) {
-              console.log('tween', 'clearTimeout');
-              clearTimeout(this.timeoutsForTweens[propName]);
-            }
-            const tween = () => {
-              this.timeoutsForTweens[meta.propName] = setTimeout(() => {
+        if (super.componentWillReceiveProps) {
+          super.componentWillReceiveProps(...arguments);
+        }
+        if (true || nextProps.smoothEnabled) {
+          const start = new Date;
+          metasOfPropsToSmooth.forEach(meta => {
+            const target = meta.default(meta.getFromProps(nextProps));
+            const origin = meta.default(meta.getFromProps(this.props));
+            if (meta.differ(target, origin)) {
+              const propName = meta.propName;
+              const diff = meta.substract(target, origin);
+              const unit = meta.divide(diff, duration);
+              if (this.timeoutsForTweens[propName]) {
+                cancelAnimationFrame(this.timeoutsForTweens[propName]);
+              }
+              let tween = () => {
                 const timePassed = new Date - start;
                 if (timePassed > duration) {
-                  this.setState(meta.wrapAsState(target));
+                  this.setState(meta.wrapAsState(target, this.state));
                   this.timeoutsForTweens[propName] = null;
+                  tween = null;
                   return;
                 }
                 const value = meta.wrapAsState(
-                  meta.add(origin, meta.multiply(unit, timePassed))
+                  meta.add(origin, meta.multiply(unit, timePassed)),
+                  this.state
                 );
-                // console.log('tween', 'value', value);
-                this.setState(value, tween);
-              }, 16);
-            };
-            tween();
-          }
-        });
+                this.setState(value, () => {
+                  this.timeoutsForTweens[meta.propName] = requestAnimationFrame(tween);
+                });
+              };
+              tween();
+            }
+          });
+        } 
       }
     }
   } 
 }
+
+const AnimatedView = (
+  Animated.createAnimatedComponent(
+    Smooth.createSmoothComponent(ScrollView, [
+      new Smooth.NumbericPropMeta({
+        propName: 'style.left',
+        getFromProps: function(props) {
+          return props.style && props.style.left;
+        },
+        wrapAsState: function(value, state) {
+          return {
+            style: {...state.style, left: value}
+          };
+        }
+      }),
+      new Smooth.NumbericPropMeta({
+        propName: 'style.width',
+        getFromProps: function(props) {
+          return props.style && props.style.width;
+        },
+        wrapAsState: function(value, state) {
+          return {
+            style: {...state.style, width: value}
+          };
+        }
+      })
+    ])
+  )
+);
 
 const AnimatedScrollView = (
   Animated.createAnimatedComponent(
@@ -305,7 +337,7 @@ class DefaultTabBar extends Component {
       }
       
       var highlight = (
-        <Animated.View style={[
+        <AnimatedView smoothEnabled={this.props.smoothEnabled} style={[
           styles.highlight, this.props.highlightStyle, {left, width}
         ]} />
       );
@@ -322,6 +354,7 @@ class DefaultTabBar extends Component {
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
+          smoothEnabled={this.props.smoothEnabled}
           style={styles.scrollView}
           onContentSizeChange={this.scrollViewOnContentSizeChange.bind(this)}
           onLayout={this.scrollViewOnLayout.bind(this)}
@@ -343,8 +376,9 @@ class DefaultTabBar extends Component {
     return (
       <TouchableOpacity
         key={name}
+        activeOpacity={0.9}
         style={styles.root}
-        onPress={e => this.goToPage(index)}
+        onPress={e => this.props.goToPage(index)}
         onLayout={e => this.tabOptionOnLayout(e, index)}>
         <Animated.Text style={[styles.text, {color}]}>{name}</Animated.Text>
       </TouchableOpacity>
@@ -357,33 +391,12 @@ class DefaultTabBar extends Component {
     this.setState({layoutOfScrollView: layout});
   }
   scrollViewOnScroll({nativeEvent:{contentOffset:{x}}}) {
-    console.log('scrollViewOnScroll', x);
     this.scrollViewContentOffsetX = x;
   }
   tabOptionOnLayout({nativeEvent:{layout}}, page) {
     const {layoutsOfTabOptions = []} = this.state || {};
     layoutsOfTabOptions[page] = layout;
     this.setState({layoutsOfTabOptions});
-  }
-  goToPage(index) {
-    let x = this.scrollViewContentOffsetX;
-    if (x > 0) {
-      const {layoutsOfTabOptions} = this.state || {};
-      if (layoutsOfTabOptions) {
-        for (let i = 0, j = layoutsOfTabOptions.length; i < j; i++) {
-          const layout = layoutsOfTabOptions[i];
-          if (layout == null) {
-            break;
-          }
-          if (x > layout.width) {
-            x -= layout.width;
-            continue;
-          }
-          return this.props.goToPage(index, i + x / layout.width);
-        }
-      }
-    }
-    return this.props.goToPage(index);
   }
 }
 

@@ -67,6 +67,7 @@ const ScrollableTabView = React.createClass({
       activeTextColor : this.props.tabBarActiveTextColor,
       inactiveTextColor : this.props.tabBarInactiveTextColor,
       containerWidth: this.state.container.width,
+      smoothEnabled: this.state.smoothEnabled
     };
 
     return (
@@ -108,12 +109,7 @@ const ScrollableTabView = React.createClass({
           contentContainerStyle={styles.scrollableContentContainerIOS}
           ref={(scrollView) => { this.scrollView = scrollView }}
           onResponderGrant={this._handleResponderGrant}
-          onResponderRelease={this._handleResponderRelease}
           onScroll={this._handleScroll}
-          onMomentumScrollBegin={(e) => {
-            var offsetX = e.nativeEvent.contentOffset.x;
-            this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
-          }}
           onMomentumScrollEnd={(e) => {
             var offsetX = e.nativeEvent.contentOffset.x;
             this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
@@ -150,7 +146,7 @@ const ScrollableTabView = React.createClass({
     }
   },
 
-  goToPage(pageNumber, fromScrollValue) {
+  goToPage(pageNumber) {
     this.props.onChangeTab({
       i: pageNumber,
       ref: this.props.children[pageNumber]
@@ -158,13 +154,35 @@ const ScrollableTabView = React.createClass({
 
     if (Platform.OS === 'ios') {
       var offset = pageNumber * this.state.container.width;
+      this.state.smoothEnabled || this.setState({smoothEnabled: true});
       this.scrollView.scrollWithoutAnimationTo(0, offset);
     }
     else {
       this.scrollView.setPage(pageNumber);
     }
+  },
+  
+  _handleResponderGrant() {
+    this.state.smoothEnabled && this.setState({smoothEnabled: false});
+  },
+  
+  _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {
+    this._updateScrollValue(offsetX / this.state.container.width);
+    this._reactToContentOffsetX(offsetX);
+  },
 
-    this.setState({currentPage: pageNumber});
+  _handleLayout(e) {
+    var {width, height} = e.nativeEvent.layout;
+    var container = this.state.container;
+
+    if (width !== container.width || height !== container.height) {
+      this.setState({container: e.nativeEvent.layout});
+      InteractionManager.runAfterInteractions(() => {
+        this.goToPage(this.state.currentPage);
+      });
+    }
+    
+    this._reactToContentOffsetX(0);
   },
 
   _updateSelectedPage(currentPage) {
@@ -232,33 +250,6 @@ const ScrollableTabView = React.createClass({
         );
       }
     });
-  },
-  
-  _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {
-    this._updateScrollValue(offsetX / this.state.container.width);
-    this._reactToContentOffsetX(offsetX);
-  },
-  
-  _handleResponderGrant() {
-    this.isDragging = true;
-  },
-  
-  _handleResponderRelease() {
-    this.isDragging = false;
-  },
-
-  _handleLayout(e) {
-    var {width, height} = e.nativeEvent.layout;
-    var container = this.state.container;
-
-    if (width !== container.width || height !== container.height) {
-      this.setState({container: e.nativeEvent.layout});
-      InteractionManager.runAfterInteractions(() => {
-        this.goToPage(this.state.currentPage);
-      });
-    }
-    
-    this._reactToContentOffsetX(0);
   },
 });
 
