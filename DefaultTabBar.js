@@ -9,11 +9,188 @@ import React, {
   View
 } from 'react-native';
 
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
-
 function constrainInRange(value, min, max) {
   return value < min ? min : value > max ? max : value;
 }
+class PropMeta {
+  constructor(params) {
+    Object.assign(this, params);
+  }
+  getFromProps(props) {
+    return props[this.propName];
+  }
+  wrapAsState(value) {
+    return {
+      [this.propName]: value
+    };
+  }
+}
+class NumbericPropMeta extends PropMeta {
+  constructor() {
+    super(...arguments);
+  }
+  default(v = 0) {
+    return v;
+  }
+  add(a, b) {
+    return a + b;
+  }
+  substract(a, b) {
+    return a - b;
+  }
+  multiply(a, b) {
+    return a * b;
+  }
+  divide(a, b) {
+    return a / b;
+  }
+  differ(a, b) {
+    return Math.abs(a - b) > 1;
+  }
+}
+class CoordinatePropMeta extends PropMeta {
+  constructor() {
+    super(...arguments);
+  }
+  default(v = {}) {
+    const {x = 0, y = 0} = v;
+    return {x, y};
+  }
+  add(a, b) {
+    return {
+      x: a.x + b.x,
+      y: a.y + b.y
+    };
+  }
+  substract(a, b) {
+    return {
+      x: a.x - b.x,
+      y: a.y - b.y
+    };
+  }
+  multiply(a, b) {
+    return {
+      x: a.x * b,
+      y: a.y * b
+    };
+  }
+  divide(a, b) {
+    return {
+      x: a.x / b,
+      y: a.y / b
+    };
+  }
+  differ(a, b) {
+    return (
+      Math.abs(a.x - b.x) > 1 ||
+      Math.abs(a.y - b.y) > 1
+    );
+  }
+}
+class ColorPropMeta extends PropMeta {
+  constructor() {
+    super(...arguments);
+  }
+  default(v = []) {
+    const [r = 0, g = 0, b = 0, a = 0] = v;
+    return [r, g, b, a];
+  }
+  add(a, b) {
+    return [
+      a[0] + b[0], a[1] + b[1],
+      a[2] + b[2], a[3] + b[3]
+    ];
+  }
+  substract(a, b) {
+    return [
+      a[0] - b[0], a[1] - b[1],
+      a[2] - b[2], a[3] - b[3]
+    ];
+  }
+  multiply(a, b) {
+    return [
+      a[0] * b, a[1] * b,
+      a[2] * b, a[3] * b
+    ];
+  }
+  divide(a, b) {
+    return [
+      a[0] / b, a[1] / b,
+      a[2] / b, a[3] / b
+    ];
+  }
+  differ(a, b) {
+    return (
+      Math.abs(a[0] - b[0]) > 1 ||
+      Math.abs(a[1] - b[1]) > 1 ||
+      Math.abs(a[2] - b[2]) > 1 ||
+      Math.abs(a[3] - b[3]) > 1
+    );
+  }
+}
+const Smooth = {
+  PropMeta,
+  NumbericPropMeta,
+  CoordinatePropMeta,
+  ColorPropMeta,
+  createSmoothComponent: function(ComponentToSmooth, metasOfPropsToSmooth, duration = 300) {
+    return class extends Component {
+      timeoutsForTweens = {};
+      constructor() {
+        super(...arguments);
+      }
+      render() {
+        const props = {...this.props, ...this.state};
+        metasOfPropsToSmooth.forEach(meta => {
+          console.log('tween', 'render', meta.getFromProps(props), this.state && meta.getFromProps(this.state));
+        });
+        return (
+          <ComponentToSmooth {...props} />
+        );
+      }
+      componentWillReceiveProps(nextProps) {
+        const start = new Date;
+        metasOfPropsToSmooth.forEach(meta => {
+          const target = meta.default(meta.getFromProps(nextProps));
+          const origin = meta.default(meta.getFromProps(this.props));
+          if (meta.differ(target, origin)) {
+            const propName = meta.propName;
+            const diff = meta.substract(target, origin);
+            const unit = meta.divide(diff, duration);
+            if (this.timeoutsForTweens[propName]) {
+              console.log('tween', 'clearTimeout');
+              clearTimeout(this.timeoutsForTweens[propName]);
+            }
+            const tween = () => {
+              this.timeoutsForTweens[meta.propName] = setTimeout(() => {
+                const timePassed = new Date - start;
+                if (timePassed > duration) {
+                  this.setState(meta.wrapAsState(target));
+                  this.timeoutsForTweens[propName] = null;
+                  return;
+                }
+                const value = meta.wrapAsState(
+                  meta.add(origin, meta.multiply(unit, timePassed))
+                );
+                // console.log('tween', 'value', value);
+                this.setState(value, tween);
+              }, 16);
+            };
+            tween();
+          }
+        });
+      }
+    }
+  } 
+}
+
+const AnimatedScrollView = (
+  Animated.createAnimatedComponent(
+    Smooth.createSmoothComponent(ScrollView, [
+      new Smooth.CoordinatePropMeta({propName: 'contentOffset'})
+    ])
+  )
+);
 
 class DefaultTabBar extends Component {
   static propTypes = {
