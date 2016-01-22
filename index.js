@@ -66,8 +66,7 @@ const ScrollableTabView = React.createClass({
       backgroundColor : this.props.tabBarBackgroundColor,
       activeTextColor : this.props.tabBarActiveTextColor,
       inactiveTextColor : this.props.tabBarInactiveTextColor,
-      containerWidth: this.state.container.width,
-      smoothEnabled: this.state.smoothEnabled
+      containerWidth: this.state.container.width
     };
 
     return (
@@ -154,7 +153,6 @@ const ScrollableTabView = React.createClass({
 
     if (Platform.OS === 'ios') {
       var offset = pageNumber * this.state.container.width;
-      this.state.smoothEnabled || this.setState({smoothEnabled: true});
       this.scrollView.scrollWithoutAnimationTo(0, offset);
     }
     else {
@@ -163,7 +161,6 @@ const ScrollableTabView = React.createClass({
   },
   
   _handleResponderGrant() {
-    this.state.smoothEnabled && this.setState({smoothEnabled: false});
   },
   
   _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {

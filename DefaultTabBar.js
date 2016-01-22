@@ -19,9 +19,15 @@ class PropMeta {
   getFromProps(props) {
     return props[this.propName];
   }
-  wrapAsState(value) {
+  propsIntegrator(value) {
+    const propName = this.propName;
+    return function integrateIntoProps(props) {
+      props[propName] = value;
+    }; 
+  }
+  propsIntegration(value) {
     return {
-      [this.propName]: value
+      [this.propName]: this.propsIntegrator(value)
     };
   }
 }
@@ -135,13 +141,17 @@ const Smooth = {
   ColorPropMeta,
   createSmoothComponent: function(ComponentToSmooth, metasOfPropsToSmooth, duration = 300) {
     return class extends Component {
-      timeoutsForTweens = {};
       constructor() {
         super(...arguments);
         this.state = {};
+        this.timeoutsForTweens = {};
+        this.targets = {};
       }
       render() {
-        const props = {...this.props, ...this.state, style: {...this.props.style, ...this.state.style}};
+        const props = {...this.props};
+        for (let i in this.state) {
+          this.state[i](props);
+        }
         return (
           <ComponentToSmooth {...props} />
         );
@@ -150,38 +160,39 @@ const Smooth = {
         if (super.componentWillReceiveProps) {
           super.componentWillReceiveProps(...arguments);
         }
-        if (true || nextProps.smoothEnabled) {
-          const start = new Date;
-          metasOfPropsToSmooth.forEach(meta => {
-            const target = meta.default(meta.getFromProps(nextProps));
-            const origin = meta.default(meta.getFromProps(this.props));
-            if (meta.differ(target, origin)) {
-              const propName = meta.propName;
-              const diff = meta.substract(target, origin);
-              const unit = meta.divide(diff, duration);
-              if (this.timeoutsForTweens[propName]) {
-                cancelAnimationFrame(this.timeoutsForTweens[propName]);
-              }
-              let tween = () => {
+        const start = new Date;
+        metasOfPropsToSmooth.forEach(meta => {
+          const propName = meta.propName;
+          const target = meta.default(meta.getFromProps(nextProps));
+          const origin = meta.default(meta.getFromProps(this.props));
+          if (this.timeoutsForTweens[propName]) {
+            cancelAnimationFrame(this.timeoutsForTweens[propName]);
+            this.timeoutsForTweens[propName] = null;
+            this.setState(meta.propsIntegration(this.targets[propName]));
+          }
+          this.targets[propName] = target;
+          if (meta.differ(target, origin)) {
+            const diff = meta.substract(target, origin);
+            const unit = meta.divide(diff, duration);
+            let tween = () => {
+              this.timeoutsForTweens[propName] = requestAnimationFrame(() => {
                 const timePassed = new Date - start;
                 if (timePassed > duration) {
-                  this.setState(meta.wrapAsState(target, this.state));
                   this.timeoutsForTweens[propName] = null;
+                  this.setState(meta.propsIntegration(target));
                   tween = null;
                   return;
                 }
-                const value = meta.wrapAsState(
-                  meta.add(origin, meta.multiply(unit, timePassed)),
-                  this.state
-                );
-                this.setState(value, () => {
-                  this.timeoutsForTweens[meta.propName] = requestAnimationFrame(tween);
-                });
-              };
-              tween();
-            }
-          });
-        } 
+                const value = meta.add(origin, meta.multiply(unit, timePassed));
+                const wrap = meta.propsIntegration(value);
+                this.setState(wrap, tween);
+              });
+            };
+            tween();
+            return;
+          }
+          this.setState(meta.propsIntegration(target));
+        });
       }
     }
   } 
@@ -189,15 +200,15 @@ const Smooth = {
 
 const AnimatedView = (
   Animated.createAnimatedComponent(
-    Smooth.createSmoothComponent(ScrollView, [
+    Smooth.createSmoothComponent(View, [
       new Smooth.NumbericPropMeta({
         propName: 'style.left',
         getFromProps: function(props) {
           return props.style && props.style.left;
         },
-        wrapAsState: function(value, state) {
-          return {
-            style: {...state.style, left: value}
+        propsIntegrator: function(value) {
+          return function(props) {
+            props.style = {...props.style, left: value};
           };
         }
       }),
@@ -206,9 +217,9 @@ const AnimatedView = (
         getFromProps: function(props) {
           return props.style && props.style.width;
         },
-        wrapAsState: function(value, state) {
-          return {
-            style: {...state.style, width: value}
+        propsIntegrator: function(value) {
+          return function(props) {
+            props.style = {...props.style, width: value};
           };
         }
       })
@@ -337,7 +348,7 @@ class DefaultTabBar extends Component {
       }
       
       var highlight = (
-        <AnimatedView smoothEnabled={this.props.smoothEnabled} style={[
+        <AnimatedView style={[
           styles.highlight, this.props.highlightStyle, {left, width}
         ]} />
       );
@@ -354,7 +365,6 @@ class DefaultTabBar extends Component {
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
-          smoothEnabled={this.props.smoothEnabled}
           style={styles.scrollView}
           onContentSizeChange={this.scrollViewOnContentSizeChange.bind(this)}
           onLayout={this.scrollViewOnLayout.bind(this)}
