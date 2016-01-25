@@ -1,7 +1,7 @@
+/* @flow */
 'use strict';
 
-const React = require('react-native');
-const {
+import React, {
   Dimensions,
   View,
   Animated,
@@ -11,20 +11,20 @@ const {
   ViewPagerAndroid,
   PropTypes,
   InteractionManager,
-} = React;
+} from 'react-native';
 
 const {
   width: deviceWidth,
   height: deviceHeight
 } = Dimensions.get('window');
 
-const DefaultTabBar = require('./DefaultTabBar');
-const DefaultTabItem = require('./DefaultTabItem');
+import TabBar from './tabBar';
+import TabItem from './tabItem';
 
-const ScrollableTabView = React.createClass({
+const ScrollableTab = React.createClass({
   statics: {
-    DefaultTabBar,
-    DefaultTabItem
+    TabBar,
+    TabItem
   },
 
   propTypes: {
@@ -36,7 +36,7 @@ const ScrollableTabView = React.createClass({
     style: View.propTypes.style,
   },
 
-  getDefaultProps() {
+  getProps() {
     return {
       tabBarPosition: 'top',
       initialPage: 0,
@@ -86,7 +86,7 @@ const ScrollableTabView = React.createClass({
     if (this.props.renderTabBar) {
       return React.cloneElement(this.props.renderTabBar(), props);
     }
-    return <DefaultTabBar {...props} />;
+    return <TabBar {...props} />;
   },
 
   renderScrollableContent() {
@@ -159,27 +159,27 @@ const ScrollableTabView = React.createClass({
       this.scrollView.setPage(pageNumber);
     }
   },
-  
+
   _handleResponderGrant() {
     this.setState({smoothEnabled: false});
   },
-  
+
   _handleResponderRelease() {
     this.timeoutToEnableSmooth = setTimeout(() => {
       this.setState({smoothEnabled: true});
     }, 100);
   },
-  
+
   _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {
     this._updateScrollValue(offsetX / this.state.container.width);
     this._reactToContentOffsetX(offsetX);
   },
-  
+
   _handleMomentumScrollBegin({nativeEvent:{contentOffset:{x: offsetX}}}) {
     clearTimeout(this.timeoutToEnableSmooth);
     this.timeoutToEnableSmooth = null;
   },
-  
+
   _handleMomentumScrollEnd({nativeEvent:{contentOffset:{x: offsetX}}}) {
     this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
     this.setState({smoothEnabled: true});
@@ -195,7 +195,7 @@ const ScrollableTabView = React.createClass({
         this.goToPage(this.state.currentPage);
       });
     }
-    
+
     this._reactToContentOffsetX(0);
   },
 
@@ -212,7 +212,7 @@ const ScrollableTabView = React.createClass({
     this.state.scrollValue.setValue(value);
     this.props.onScroll(value);
   },
-  
+
   _reactToContentOffsetX(offsetX) {
     const scrollValue = offsetX / this.state.container.width;
     const scrollValueFloor = Math.floor(scrollValue);
@@ -229,7 +229,7 @@ const ScrollableTabView = React.createClass({
                   tabItem.tabItemWillInitialize()
                 ),
                 tabItem.initialize && (
-                  tabItem.initialize('ScrollableTabView')
+                  tabItem.initialize('ScrollableTab')
                 ),
                 tabItem.setState({
                   initialized: true
@@ -267,7 +267,7 @@ const ScrollableTabView = React.createClass({
   },
 });
 
-module.exports = ScrollableTabView;
+module.exports = ScrollableTab;
 
 const styles = StyleSheet.create({
   container: {

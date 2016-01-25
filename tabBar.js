@@ -116,10 +116,10 @@ class DefaultTabBar extends Component {
   }
   render() {
     const styles = this.styles;
-    
+
     const containerWidth = this.props.containerWidth;
     const numberOfTabs = this.props.tabs.length;
-    
+
     const {contentSizeOfScrollView, layoutOfScrollView, layoutsOfTabOptions} = this.state || {};
     if (contentSizeOfScrollView && layoutOfScrollView && layoutsOfTabOptions && layoutsOfTabOptions.length) {
       const inputRange = [];
@@ -154,7 +154,7 @@ class DefaultTabBar extends Component {
           extrapolateLeft: 'clamp',
           extrapolateRight: 'clamp'
         });
-        
+
         var offset = this.props.scrollValue.interpolate({
           inputRange: inputRange,
           outputRange: outputRangeOffset,
@@ -163,7 +163,7 @@ class DefaultTabBar extends Component {
           mapping: x => ({x})
         });
       }
-      
+
       var highlight = (
         <AnimatedView
           smoothEnabled={this.props.smoothEnabled}
@@ -174,10 +174,12 @@ class DefaultTabBar extends Component {
       );
     }
 
+    const LeftButton = props.renderLeftButton || View;
+    const RightButton = props.renderRightButton || View;
+
     return (
       <View style={[styles.root, this.props.style]}>
-        <View style={[styles.leftButton, this.props.leftButtonStyle]}>
-        </View>
+        <LeftButton style={[styles.leftButton, this.props.leftButtonStyle]} />
         <AnimatedScrollView
           automaticallyAdjustContentInsets={false}
           contentContainerStyle={styles.contentContainer}
@@ -193,8 +195,7 @@ class DefaultTabBar extends Component {
           {highlight}
           {this.props.tabs.map(this.renderTabOption.bind(this))}
         </AnimatedScrollView>
-        <View style={[styles.rightButton, this.props.rightButtonStyle]}>
-        </View>
+        <RightButton style={[styles.rightButton, this.props.rightButtonStyle]} />
       </View>
     );
   }
