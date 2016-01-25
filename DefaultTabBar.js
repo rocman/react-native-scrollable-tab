@@ -24,8 +24,8 @@ const AnimatedView = (
           return props.style && props.style.left;
         },
         propsIntegrator: function(value) {
-          return function(props) {
-            props.style = {...props.style, left: value};
+          return function(previousState, currentProps) {
+            return {style: {...currentProps.style, ...previousState.style, left: value}};
           };
         }
       }),
@@ -35,8 +35,8 @@ const AnimatedView = (
           return props.style && props.style.width;
         },
         propsIntegrator: function(value) {
-          return function(props) {
-            props.style = {...props.style, width: value};
+          return function(previousState, currentProps) {
+            return {style: {...currentProps.style, ...previousState.style, width: value}};
           };
         }
       })
@@ -165,9 +165,12 @@ class DefaultTabBar extends Component {
       }
       
       var highlight = (
-        <AnimatedView style={[
-          styles.highlight, this.props.highlightStyle, {left, width}
-        ]} />
+        <AnimatedView
+          smoothEnabled={this.props.smoothEnabled}
+          style={[
+            styles.highlight, this.props.highlightStyle, {left, width}
+          ]}
+        />
       );
     }
 
@@ -183,6 +186,7 @@ class DefaultTabBar extends Component {
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
           style={styles.scrollView}
+          smoothEnabled={this.props.smoothEnabled}
           onContentSizeChange={this.scrollViewOnContentSizeChange.bind(this)}
           onLayout={this.scrollViewOnLayout.bind(this)}
           onScroll={this.scrollViewOnScroll.bind(this)}>

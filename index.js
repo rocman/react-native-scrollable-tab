@@ -66,7 +66,8 @@ const ScrollableTabView = React.createClass({
       backgroundColor : this.props.tabBarBackgroundColor,
       activeTextColor : this.props.tabBarActiveTextColor,
       inactiveTextColor : this.props.tabBarInactiveTextColor,
-      containerWidth: this.state.container.width
+      containerWidth: this.state.container.width,
+      smoothEnabled: this.state.smoothEnabled
     };
 
     return (
@@ -101,18 +102,17 @@ const ScrollableTabView = React.createClass({
     if (Platform.OS === 'ios') {
       return (
         <ScrollView
-          horizontal
-          pagingEnabled
+          ref={(scrollView) => { this.scrollView = scrollView }}
+          horizontal={true}
+          pagingEnabled={true}
           automaticallyAdjustContentInsets={false}
           style={styles.scrollableContentIOS}
           contentContainerStyle={styles.scrollableContentContainerIOS}
-          ref={(scrollView) => { this.scrollView = scrollView }}
           onResponderGrant={this._handleResponderGrant}
+          onResponderRelease={this._handleResponderRelease}
           onScroll={this._handleScroll}
-          onMomentumScrollEnd={(e) => {
-            var offsetX = e.nativeEvent.contentOffset.x;
-            this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
-          }}
+          onMomentumScrollBegin={this._handleMomentumScrollBegin}
+          onMomentumScrollEnd={this._handleMomentumScrollEnd}
           scrollEventThrottle={16}
           showsHorizontalScrollIndicator={false}
           scrollEnabled={!this.props.locked}
@@ -161,11 +161,28 @@ const ScrollableTabView = React.createClass({
   },
   
   _handleResponderGrant() {
+    this.setState({smoothEnabled: false});
+  },
+  
+  _handleResponderRelease() {
+    this.timeoutToEnableSmooth = setTimeout(() => {
+      this.setState({smoothEnabled: true});
+    }, 100);
   },
   
   _handleScroll({nativeEvent:{contentOffset:{x: offsetX}}}) {
     this._updateScrollValue(offsetX / this.state.container.width);
     this._reactToContentOffsetX(offsetX);
+  },
+  
+  _handleMomentumScrollBegin({nativeEvent:{contentOffset:{x: offsetX}}}) {
+    clearTimeout(this.timeoutToEnableSmooth);
+    this.timeoutToEnableSmooth = null;
+  },
+  
+  _handleMomentumScrollEnd({nativeEvent:{contentOffset:{x: offsetX}}}) {
+    this._updateSelectedPage(parseInt(offsetX / this.state.container.width));
+    this.setState({smoothEnabled: true});
   },
 
   _handleLayout(e) {
